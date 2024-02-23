@@ -54,21 +54,6 @@
                 Console.WriteLine(Format, pair.Key, player.Name, player.Level, player.InBanList);
             }
         }
-
-
-    }
-
-    interface IDatabase
-    {
-        public IReadOnlyDictionary<int, Player> Players { get; }
-
-        public bool AddPlayer(Player player);
-
-        public bool RemovePlayer(int playerId);
-
-        public bool Ban(int playerId);
-
-        public bool Unban(int playerId);
     }
 
     interface ICommand
@@ -274,11 +259,24 @@
         }
     }
 
+    interface IDatabase
+    {
+        public IReadOnlyDictionary<int, Player> Players { get; }
+
+        public bool AddPlayer(Player player);
+
+        public bool RemovePlayer(int playerId);
+
+        public bool Ban(int playerId);
+
+        public bool Unban(int playerId);
+    }
+
     class Database : IDatabase
     {
-        private int _index = 1;
-
         private readonly Dictionary<int, Player> _players = new Dictionary<int, Player>();
+
+        private int _index = 0;
 
         public Database()
         { 
@@ -291,7 +289,7 @@
                 throw new ArgumentNullException(nameof(players));
             }
 
-            _players = players.ToDictionary(key => _index++);
+            _players = players.ToDictionary(key => ++_index);
         }
 
         public IReadOnlyDictionary<int, Player> Players => _players;
@@ -348,7 +346,7 @@
         public static bool ReadBool(string message)
         {
             int[] allowedValues = { 0, 1};
-            string allowedValuesString = string.Join(",", allowedValues);
+            string allowedValuesString = string.Join(", ", allowedValues);
 
             bool parsed = false;
             bool value = false;
@@ -364,7 +362,7 @@
 
                 if (!parsed || !allowedValues.Contains(intValue))
                 {
-                    Console.WriteLine($"Неудачные ввод данных. Это должно быть число из {allowedValuesString}.");
+                    Console.WriteLine($"Неудачный ввод данных. Это должно быть число из {allowedValuesString}.");
                     parsed = false;
                 }
             }
@@ -386,7 +384,7 @@
 
                 if (!parsed)
                 {
-                    Console.WriteLine("Неудачные ввод данных. Это должно быть число.");
+                    Console.WriteLine("Неудачный ввод данных. Это должно быть число.");
                 }
             }
 
