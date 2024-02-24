@@ -42,17 +42,23 @@
 
     class PlayerPrinter
     {
-        private const string Format = "No {0, 5} Name {1, 16} Level {2, 5} Banned {3, 6}";
+        private const string OutputFormat = "{0, 4} | {1, -16} | {2, 5} | {3, 6}";
 
         public static void Print(IReadOnlyDictionary<int, Player> players)
         {
-            Console.WriteLine("Список игроков");
+            PrintHeaders();
 
             foreach (var pair in players)
             {
                 var player = pair.Value;
-                Console.WriteLine(Format, pair.Key, player.Name, player.Level, player.InBanList);
+                Console.WriteLine(OutputFormat, pair.Key, player.Name, player.Level, player.InBanList);
             }
+        }
+
+        private static void PrintHeaders()
+        {
+            Console.WriteLine("Список игроков\n");
+            Console.WriteLine(OutputFormat, "No", "Name", "Level", "Banned");
         }
     }
 
@@ -143,7 +149,7 @@
             {
                 Shell.PrintCommandsInfo();
                 Console.WriteLine();
-                int commandNumber = ConsoleUtils.ReadInteger("Введите номер команды");
+                int commandNumber = InputCommandNumber();
                 Shell.ExecuteCommandByIndex(commandNumber);
 
                 Console.WriteLine();
@@ -151,6 +157,13 @@
                 Console.ReadLine();
                 Console.Clear();
             }
+        }
+
+        private static int InputCommandNumber()
+        {
+            int commandNumber = ConsoleUtils.ReadInteger("Введите номер команды");
+            Console.WriteLine();
+            return commandNumber;
         }
     }
 
