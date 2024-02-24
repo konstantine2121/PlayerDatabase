@@ -13,30 +13,27 @@
 
     class Player
     {
-        public Player(Guid id, string name, bool inBan, int level)
+        public Player(string name, bool banned, int level)
         {
-            Id = id;
             Name = name;
-            InBanList = inBan;
+            Banned = banned;
             Level = level;
         }
 
-        public Guid Id { get; private set; }
-
         public string Name { get; private set; }
 
-        public bool InBanList { get; private set; }
+        public bool Banned { get; private set; }
 
         public int Level { get; private set; }
 
         public void Ban()
         {
-            InBanList = true;
+            Banned = true;
         }
 
         public void Unban()
         {
-            InBanList = false;
+            Banned = false;
         }
     }
 
@@ -51,7 +48,7 @@
             foreach (var pair in players)
             {
                 var player = pair.Value;
-                Console.WriteLine(OutputFormat, pair.Key, player.Name, player.Level, player.InBanList);
+                Console.WriteLine(OutputFormat, pair.Key, player.Name, player.Level, player.Banned);
             }
         }
 
@@ -110,7 +107,7 @@
 
         public void ExecuteCommandByIndex(int index)
         {
-            if (_commands.TryGetValue(index, out var command))
+            if (_commands.TryGetValue(index, out ICommand command))
             {
                 command.Execute();
             }
@@ -159,7 +156,7 @@
             }
         }
 
-        private static int InputCommandNumber()
+        private int InputCommandNumber()
         {
             int commandNumber = ConsoleUtils.ReadInteger("Введите номер команды");
             Console.WriteLine();
@@ -213,17 +210,16 @@
         {
             return new Command(
                 "Добавление нового игрока в базу",
-                () => database.AddPlayer(InputPlayer()));
+                () => database.TryAddPlayer(InputPlayer()));
         }
 
-        private static Player InputPlayer()
+        private Player InputPlayer()
         {
-            var id = Guid.NewGuid();
             var name = ConsoleUtils.ReadString("Введите имя игрока:");
             var inBan = ConsoleUtils.ReadBool("Игрок в бане или нет.");
             var level = ConsoleUtils.ReadInteger("Введите уровень игрока:");
 
-            return new Player(id, name, inBan, level);
+            return new Player(name, inBan, level);
         }
 
         #endregion Add
@@ -232,7 +228,7 @@
         {
             return new Command(
                 "Удаление игрока из базы",
-                () => database.RemovePlayer(
+                () => database.TryRemovePlayer(
                     InputPlayerId()));
         }
 
@@ -240,7 +236,7 @@
         {
             return new Command(
                 "Забанить игрока",
-                () => database.Ban(
+                () => database.TryBan(
                     InputPlayerId()));
         }
 
@@ -248,7 +244,7 @@
         {
             return new Command(
                 "Разбанить игрока",
-                () => database.Unban(
+                () => database.TryUnban(
                     InputPlayerId()));
         }
 
@@ -263,10 +259,18 @@
         {
             return new Command(
                 "Выход из приложения",
-                () => Environment.Exit(0));
+                () => 
+                {
+                    bool confirm = ConsoleUtils.ReadBool("Вы действетельно хотите выйти?");
+
+                    if (confirm)
+                    {
+                        Environment.Exit(0); 
+                    }
+                });
         }
 
-        private static int InputPlayerId()
+        private int InputPlayerId()
         {
             return ConsoleUtils.ReadInteger("Введите id игрока:");
         }
@@ -274,15 +278,15 @@
 
     interface IDatabase
     {
-        public IReadOnlyDictionary<int, Player> Players { get; }
+        IReadOnlyDictionary<int, Player> Players { get; }
 
-        public bool AddPlayer(Player player);
+        bool TryAddPlayer(Player player);
 
-        public bool RemovePlayer(int playerId);
+        bool TryRemovePlayer(int playerId);
 
-        public bool Ban(int playerId);
+        bool TryBan(int playerId);
 
-        public bool Unban(int playerId);
+        bool TryUnban(int playerId);
     }
 
     class Database : IDatabase
@@ -307,7 +311,7 @@
 
         public IReadOnlyDictionary<int, Player> Players => _players;
 
-        public bool AddPlayer(Player player)
+        public bool TryAddPlayer(Player player)
         {
             if (player is null)
             {
@@ -320,7 +324,7 @@
             return true;
         }
 
-        public bool RemovePlayer(int playerId)
+        public bool TryRemovePlayer(int playerId)
         {
             if (!_players.ContainsKey(playerId))
             {
@@ -331,7 +335,7 @@
             return true;
         }
 
-        public bool Ban(int playerId)
+        public bool TryBan(int playerId)
         {
             if (!_players.ContainsKey(playerId))
             {
@@ -342,7 +346,7 @@
             return true;
         }
 
-        public bool Unban(int playerId)
+        public bool TryUnban(int playerId)
         {
             if (!_players.ContainsKey(playerId))
             {
@@ -358,29 +362,31 @@
     {
         public static bool ReadBool(string message)
         {
-            int[] allowedValues = { 0, 1};
-            string allowedValuesString = string.Join(", ", allowedValues);
+            const int no = 0;
+            const int yes = 1;
+
+            int[] allowedValues = { no, yes};
+            string allowedValuesString = $"(да = {yes}, нет = {no})";
 
             bool parsed = false;
-            bool value = false;
-            string input = string.Empty;
+            int value = 0;
 
             while (!parsed)
             {
                 Console.WriteLine(message);
                 Console.WriteLine($"Введите {allowedValuesString}.");
-                input = Console.ReadLine();
-                var intValue = 0;
-                parsed = int.TryParse(input, out intValue);
+                
+                string input = Console.ReadLine();
+                parsed = int.TryParse(input, out value);
 
-                if (!parsed || !allowedValues.Contains(intValue))
+                if (!parsed || !allowedValues.Contains(value))
                 {
                     Console.WriteLine($"Неудачный ввод данных. Это должно быть число из {allowedValuesString}.");
                     parsed = false;
                 }
             }
 
-            return value;
+            return value == yes;
         }
 
         public static int ReadInteger(string message)
@@ -417,7 +423,7 @@
 
                 if (!correctInput)
                 {
-                    Console.WriteLine("Неудачные ввод данных. Строка не должна быть пустой.");
+                    Console.WriteLine("Неудачный ввод данных. Строка не должна быть пустой.");
                 }
             }
 
